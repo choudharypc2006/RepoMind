@@ -14,6 +14,8 @@ router.get('/', (req, res) => {
       repoMetadata: 'GET /api/github/repo?url=:githubUrl',
       fileTree: 'GET /api/github/tree?url=:githubUrl[&branch=:branch]',
       fileContent: 'GET /api/github/file?url=:githubUrl&path=:filePath[&branch=:branch]',
+      aiExplain: 'POST /api/ai/explain',
+      aiChat: 'POST /api/ai/chat',
     },
     timestamp: new Date().toISOString(),
   });

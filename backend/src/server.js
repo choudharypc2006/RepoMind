@@ -6,6 +6,7 @@ import express from 'express';
 import cors from 'cors';
 import healthRoutes from './routes/healthRoutes.js';
 import githubRoutes from './routes/githubRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,6 +40,7 @@ app.use(express.json());
 // 3. Mount Routes
 app.use('/', healthRoutes);
 app.use('/api/github', githubRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 4. Handle 404 Not Found
 app.use((req, res) => {

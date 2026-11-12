@@ -106,3 +106,64 @@ export async function fetchFileContent(repoUrl, filePath, branch) {
   return json.data;
 }
 
+/**
+ * Generate Gemini AI explanation for a given code file
+ */
+export async function explainCodeFile({ repoName, filePath, language, code }) {
+  const endpoint = `${API_BASE_URL}/api/ai/explain`;
+
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        repoName,
+        filePath,
+        language,
+        code,
+      }),
+    });
+  } catch (networkError) {
+    throw new Error('Cannot connect to RepoMind AI backend service. Please check that server is running.');
+  }
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.error || 'Failed to generate AI code explanation.');
+  }
+
+  return json.data;
+}
+
+/**
+ * Chat with Gemini about the selected source code file
+ */
+export async function chatAboutFile({ filePath, code, messages, question }) {
+  const endpoint = `${API_BASE_URL}/api/ai/chat`;
+
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filePath,
+        code,
+        messages,
+        question,
+      }),
+    });
+  } catch (networkError) {
+    throw new Error('Cannot connect to RepoMind AI backend service.');
+  }
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.error || 'Failed to receive AI chat response.');
+  }
+
+  return json.data;
+}

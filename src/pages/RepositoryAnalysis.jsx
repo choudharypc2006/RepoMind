@@ -36,11 +36,13 @@ export const RepositoryAnalysis = () => {
     openTabs,
     closeTab,
     isLoadingFile,
+    isExplainingFile,
+    requestFileExplanation,
+    explainError,
   } = useRepo();
 
   // Responsive mobile active view: 'files' | 'code' | 'ai'
   const [mobileTab, setMobileTab] = useState('code');
-  const [isExplaining, setIsExplaining] = useState(false);
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
 
@@ -51,15 +53,15 @@ export const RepositoryAnalysis = () => {
     }
   }, [repoId]);
 
-  const handleExplainCode = () => {
-    setIsExplaining(true);
-    // Switch to AI tab on mobile if explaining
+  const handleExplainCode = async () => {
     if (window.innerWidth < 1024) {
       setMobileTab('ai');
     }
-    setTimeout(() => {
-      setIsExplaining(false);
-    }, 1200);
+    try {
+      await requestFileExplanation(activeFile);
+    } catch (err) {
+      // Error state captured in context / panel
+    }
   };
 
   const handleSelectFile = (file) => {
@@ -222,7 +224,7 @@ export const RepositoryAnalysis = () => {
             onSelectTab={selectFile}
             onCloseTab={closeTab}
             onExplainCode={handleExplainCode}
-            isExplaining={isExplaining}
+            isExplaining={isExplainingFile}
             isLoadingFile={isLoadingFile}
           />
         </div>
@@ -238,7 +240,8 @@ export const RepositoryAnalysis = () => {
           <div className="w-full h-full">
             <AIAnalysisPanel
               file={activeFile}
-              isAnalyzing={isExplaining}
+              isAnalyzing={isExplainingFile}
+              explainError={explainError}
               onTriggerExplain={handleExplainCode}
             />
           </div>

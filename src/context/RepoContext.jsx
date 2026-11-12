@@ -4,6 +4,8 @@ import {
   fetchRepoMetadata,
   fetchRepoTree,
   fetchFileContent,
+  explainCodeFile,
+  chatAboutFile,
 } from '../services/githubApi';
 
 const RepoContext = createContext(null);
@@ -296,6 +298,80 @@ export const RepoProvider = ({ children }) => {
     setUserSettings((prev) => ({ ...prev, ...partialSettings }));
   };
 
+  const [isExplainingFile, setIsExplainingFile] = useState(false);
+  const [explainError, setExplainError] = useState(null);
+
+  /**
+   * Request Gemini AI analysis for the currently active file
+   */
+  const requestFileExplanation = async (fileToExplain = activeFile) => {
+    if (!fileToExplain || !fileToExplain.content) return;
+
+    setIsExplainingFile(true);
+    setExplainError(null);
+
+    try {
+      const analysisData = await explainCodeFile({
+        repoName: selectedRepo?.fullName || selectedRepo?.name || 'Repository',
+        filePath: fileToExplain.path,
+        language: fileToExplain.language || 'text',
+        code: fileToExplain.content,
+      });
+
+      const updatedFile = {
+        ...fileToExplain,
+        analysis: {
+          summary: analysisData.summary || 'Summary unavailable.',
+          detailedExplanation: analysisData.detailedExplanation || '',
+          keyInsights: analysisData.importantConcepts || [],
+          functions: analysisData.functions || [],
+          potentialIssues: analysisData.potentialIssues || [],
+          suggestions: analysisData.suggestions || [],
+          complexity: {
+            time: 'Analyzed',
+            space: 'Analyzed',
+            maintainabilityIndex: analysisData.metrics?.maintainabilityIndex || 85,
+            cyclomaticComplexity: analysisData.metrics?.complexity || 'Normal',
+          },
+          security: {
+            score: (analysisData.potentialIssues && analysisData.potentialIssues.length === 0) ? 'A' : 'B',
+            status: 'AI Audited',
+            details: (analysisData.potentialIssues && analysisData.potentialIssues.length > 0)
+              ? analysisData.potentialIssues[0]
+              : 'No glaring vulnerabilities identified in static review.',
+          },
+        },
+      };
+
+      setActiveFile(updatedFile);
+      setOpenTabs((prev) =>
+        prev.map((t) => (t.path === fileToExplain.path ? updatedFile : t))
+      );
+      return updatedFile;
+    } catch (err) {
+      setExplainError(err.message || 'Failed to explain code with Gemini AI.');
+      throw err;
+    } finally {
+      setIsExplainingFile(false);
+    }
+  };
+
+  /**
+   * Send a chat question to Gemini regarding the active file
+   */
+  const askGeminiAboutFile = async (question, chatHistory = []) => {
+    if (!activeFile || !activeFile.content) {
+      throw new Error('Please select a file with valid source code before asking Gemini.');
+    }
+
+    return await chatAboutFile({
+      filePath: activeFile.path,
+      code: activeFile.content,
+      messages: chatHistory,
+      question,
+    });
+  };
+
   return (
     <RepoContext.Provider
       value={{
@@ -319,6 +395,11 @@ export const RepoProvider = ({ children }) => {
         resetDefaultData,
         userSettings,
         updateSettings,
+        isExplainingFile,
+        explainError,
+        setExplainError,
+        requestFileExplanation,
+        askGeminiAboutFile,
       }}
     >
       {children}
