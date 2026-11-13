@@ -4,15 +4,21 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import { connectDB } from './config/db.js';
 import healthRoutes from './routes/healthRoutes.js';
 import githubRoutes from './routes/githubRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-// 1. CORS Configuration
+// 0. Initialize Database Connection
+connectDB();
+
+// 1. CORS Configuration with Credentials support for HTTP-only Cookies
 const allowedOrigins = [
   FRONTEND_URL,
   'http://localhost:5173',
@@ -22,23 +28,24 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, Postman) or matching origins
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(null, true); // Permissive in local development
+      return callback(null, true); // Permissive in local dev
     },
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
+    credentials: true, // Crucial for receiving/sending HTTP-only cookies
   })
 );
 
-// 2. Request body parsing
+// 2. Request body & Cookie parsing
 app.use(express.json());
+app.use(cookieParser());
 
 // 3. Mount Routes
 app.use('/', healthRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/github', githubRoutes);
 app.use('/api/ai', aiRoutes);
 

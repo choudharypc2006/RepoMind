@@ -32,6 +32,7 @@ export async function fetchRepoMetadata(repoUrl) {
     response = await fetch(endpoint, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
     });
   } catch (networkError) {
     throw new Error(
@@ -62,6 +63,7 @@ export async function fetchRepoTree(repoUrl, branch) {
     response = await fetch(endpoint, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
     });
   } catch (networkError) {
     throw new Error(
@@ -92,6 +94,7 @@ export async function fetchFileContent(repoUrl, filePath, branch) {
     response = await fetch(endpoint, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
     });
   } catch (networkError) {
     throw new Error('Failed to connect to backend service.');
@@ -117,6 +120,7 @@ export async function explainCodeFile({ repoName, filePath, language, code }) {
     response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         repoName,
         filePath,
@@ -148,6 +152,7 @@ export async function chatAboutFile({ filePath, code, messages, question }) {
     response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         filePath,
         code,
