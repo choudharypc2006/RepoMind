@@ -10,6 +10,7 @@ import healthRoutes from './routes/healthRoutes.js';
 import githubRoutes from './routes/githubRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import analysisRoutes from './routes/analysisRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +47,7 @@ app.use(cookieParser());
 // 3. Mount Routes
 app.use('/', healthRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/analysis', analysisRoutes);
 app.use('/api/github', githubRoutes);
 app.use('/api/ai', aiRoutes);
 

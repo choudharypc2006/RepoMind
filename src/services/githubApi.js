@@ -172,3 +172,124 @@ export async function chatAboutFile({ filePath, code, messages, question }) {
 
   return json.data;
 }
+
+// ─── Analysis History API ────────────────────────────────────────────
+
+/**
+ * Save a completed AI analysis to the backend (MongoDB)
+ */
+export async function saveAnalysisToHistory({
+  repositoryName,
+  repositoryUrl,
+  owner,
+  selectedFile,
+  language,
+  explanation,
+}) {
+  const endpoint = `${API_BASE_URL}/api/analysis`;
+
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        repositoryName,
+        repositoryUrl,
+        owner,
+        selectedFile,
+        language,
+        explanation,
+      }),
+    });
+  } catch (networkError) {
+    throw new Error('Cannot connect to backend to save analysis history.');
+  }
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.error || 'Failed to save analysis.');
+  }
+
+  return json.data;
+}
+
+/**
+ * Fetch all analyses for the currently logged-in user
+ */
+export async function fetchAnalysisHistory() {
+  const endpoint = `${API_BASE_URL}/api/analysis`;
+
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+  } catch (networkError) {
+    throw new Error('Cannot connect to backend to fetch analysis history.');
+  }
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.error || 'Failed to fetch analysis history.');
+  }
+
+  return json.data;
+}
+
+/**
+ * Fetch a single analysis by ID
+ */
+export async function fetchAnalysisById(analysisId) {
+  const endpoint = `${API_BASE_URL}/api/analysis/${analysisId}`;
+
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+  } catch (networkError) {
+    throw new Error('Cannot connect to backend to fetch analysis.');
+  }
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.error || 'Failed to fetch analysis.');
+  }
+
+  return json.data;
+}
+
+/**
+ * Delete a single analysis by ID
+ */
+export async function deleteAnalysisById(analysisId) {
+  const endpoint = `${API_BASE_URL}/api/analysis/${analysisId}`;
+
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+  } catch (networkError) {
+    throw new Error('Cannot connect to backend to delete analysis.');
+  }
+
+  const json = await response.json();
+
+  if (!response.ok || !json.success) {
+    throw new Error(json.error || 'Failed to delete analysis.');
+  }
+
+  return json;
+}
