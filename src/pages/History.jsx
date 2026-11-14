@@ -18,14 +18,27 @@ import {
   Copy,
   X,
   Sparkles,
+  ArrowRight,
+  Star,
+  GitFork,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
-import { fetchAnalysisHistory, deleteAnalysisById } from '../services/githubApi';
+import { useRepo } from '../context/RepoContext';
+import {
+  fetchAnalysisHistory,
+  deleteAnalysisById,
+  fetchUserReposFromDb,
+  deleteUserRepoFromDb,
+} from '../services/githubApi';
 
 export const History = () => {
   const navigate = useNavigate();
+  const { selectRepository } = useRepo();
 
+  const [activeTab, setActiveTab] = useState('repositories'); // 'repositories' | 'explanations'
+  const [userRepos, setUserRepos] = useState([]);
   const [analyses, setAnalyses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,7 +48,7 @@ export const History = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState('ALL');
 
-  // Modal for Viewing Single Analysis
+  // Modal for Viewing Single Code Analysis
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -44,10 +57,14 @@ export const History = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await fetchAnalysisHistory();
-      setAnalyses(data || []);
+      const [reposData, analysesData] = await Promise.all([
+        fetchUserReposFromDb().catch(() => []),
+        fetchAnalysisHistory().catch(() => []),
+      ]);
+      setUserRepos(reposData || []);
+      setAnalyses(analysesData || []);
     } catch (err) {
-      setError(err.message || 'Failed to load analysis history from server.');
+      setError(err.message || 'Failed to load analysis history from MongoDB.');
     } finally {
       setIsLoading(false);
     }
@@ -57,10 +74,28 @@ export const History = () => {
     loadHistory();
   }, []);
 
-  // Delete an analysis
-  const handleDelete = async (id, e) => {
+  // Delete a saved repository
+  const handleDeleteRepo = async (repoId, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this analysis from history?')) {
+    if (!window.confirm('Delete this analyzed repository from your MongoDB history?')) {
+      return;
+    }
+
+    setDeletingId(repoId);
+    try {
+      await deleteUserRepoFromDb(repoId);
+      setUserRepos((prev) => prev.filter((r) => r.id !== repoId && r.repoId !== repoId));
+    } catch (err) {
+      alert('Failed to delete repository from history.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Delete an AI code file analysis
+  const handleDeleteAnalysis = async (id, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm('Delete this code explanation from your MongoDB history?')) {
       return;
     }
 
@@ -78,7 +113,34 @@ export const History = () => {
     }
   };
 
-  // Filter analyses
+  const handleOpenRepo = (repoId) => {
+    selectRepository(repoId);
+    navigate(`/analysis/${repoId}`);
+  };
+
+  const handleOpenAnalysisWorkspace = (item, e) => {
+    if (e) e.stopPropagation();
+    selectRepository(item.repositoryName, item.selectedFile);
+    navigate(`/analysis/${item.repositoryName}?file=${encodeURIComponent(item.selectedFile)}`);
+  };
+
+  // Filter repositories
+  const filteredRepos = useMemo(() => {
+    return userRepos.filter((item) => {
+      const name = item.fullName?.toLowerCase() || item.name?.toLowerCase() || '';
+      const desc = item.description?.toLowerCase() || '';
+      const query = searchTerm.toLowerCase();
+
+      const matchesSearch = name.includes(query) || desc.includes(query);
+      const matchesLang =
+        selectedLanguage === 'ALL' ||
+        item.primaryLanguage?.toUpperCase() === selectedLanguage.toUpperCase();
+
+      return matchesSearch && matchesLang;
+    });
+  }, [userRepos, searchTerm, selectedLanguage]);
+
+  // Filter code file analyses
   const filteredAnalyses = useMemo(() => {
     return analyses.filter((item) => {
       const repo = item.repositoryName?.toLowerCase() || '';
@@ -96,15 +158,15 @@ export const History = () => {
     });
   }, [analyses, searchTerm, selectedLanguage]);
 
-  // Extract unique languages
+  // Extract unique languages for active tab
   const languages = useMemo(() => {
-    const set = new Set(
-      analyses
-        .map((a) => a.language?.toUpperCase())
-        .filter(Boolean)
-    );
+    const list =
+      activeTab === 'repositories'
+        ? userRepos.map((r) => r.primaryLanguage?.toUpperCase())
+        : analyses.map((a) => a.language?.toUpperCase());
+    const set = new Set(list.filter(Boolean));
     return ['ALL', ...Array.from(set)];
-  }, [analyses]);
+  }, [activeTab, userRepos, analyses]);
 
   const handleCopyExplanation = (text) => {
     navigator.clipboard.writeText(text);
@@ -120,11 +182,11 @@ export const History = () => {
           <div className="flex items-center gap-2">
             <HistoryIcon className="w-5 h-5 text-brand-400" />
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              Repository Analysis History
+              MongoDB Analysis History
             </h1>
           </div>
           <p className="text-xs text-charcoal-400 mt-1">
-            Persistent audit history saved in MongoDB. Review Gemini AI explanations, file audits, and architectural breakdowns.
+            Persistent repository records and Gemini AI code explanations stored in your MongoDB account.
           </p>
         </div>
 
@@ -152,6 +214,45 @@ export const History = () => {
         </div>
       </div>
 
+      {/* Tabs Switcher: Repositories vs Code Explanations */}
+      <div className="flex items-center gap-2 border-b border-charcoal-700/80 pb-3">
+        <button
+          onClick={() => {
+            setActiveTab('repositories');
+            setSelectedLanguage('ALL');
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'repositories'
+              ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-sm'
+              : 'bg-charcoal-900 text-charcoal-400 hover:text-charcoal-200 border border-charcoal-700/60'
+          }`}
+        >
+          <FolderGit2 className="w-4 h-4" />
+          <span>Analyzed Repositories</span>
+          <span className="ml-1 px-1.5 py-0.2 rounded-full bg-charcoal-800 text-[10px] font-mono">
+            {userRepos.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('explanations');
+            setSelectedLanguage('ALL');
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            activeTab === 'explanations'
+              ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-sm'
+              : 'bg-charcoal-900 text-charcoal-400 hover:text-charcoal-200 border border-charcoal-700/60'
+          }`}
+        >
+          <FileCode className="w-4 h-4" />
+          <span>Code File Explanations</span>
+          <span className="ml-1 px-1.5 py-0.2 rounded-full bg-charcoal-800 text-[10px] font-mono">
+            {analyses.length}
+          </span>
+        </button>
+      </div>
+
       {/* Error State */}
       {error && (
         <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center justify-between gap-3">
@@ -171,7 +272,11 @@ export const History = () => {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-500" />
           <input
             type="text"
-            placeholder="Search by repo, file path, or AI explanation..."
+            placeholder={
+              activeTab === 'repositories'
+                ? 'Search analyzed repositories by name or description...'
+                : 'Search by repo, file path, or AI explanation...'
+            }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-charcoal-900 border border-charcoal-700/80 rounded-lg pl-9 pr-4 py-2 text-xs text-charcoal-200 placeholder-charcoal-500 focus:outline-none focus:border-brand-500 font-mono"
@@ -201,7 +306,7 @@ export const History = () => {
         )}
       </div>
 
-      {/* Loading State */}
+      {/* Loading Skeletons */}
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -215,20 +320,20 @@ export const History = () => {
             </div>
           ))}
         </div>
-      ) : filteredAnalyses.length === 0 ? (
-        /* Empty State */
-        <div className="p-12 text-center rounded-2xl bg-charcoal-900 border border-dashed border-charcoal-700/70 space-y-3">
-          <FolderGit2 className="w-12 h-12 text-charcoal-600 mx-auto" />
-          <h3 className="text-base font-semibold text-charcoal-200">
-            {analyses.length === 0 ? 'No analyses recorded in MongoDB' : 'No matching analyses found'}
-          </h3>
-          <p className="text-xs text-charcoal-400 max-w-md mx-auto">
-            {analyses.length === 0
-              ? 'Whenever you click "Explain Code" on a file in the Repository Analysis page, Gemini reviews the code and automatically records it into your MongoDB account.'
-              : 'Try adjusting your search query or language filter to locate past analysis records.'}
-          </p>
-          <div className="pt-2 flex items-center justify-center gap-3">
-            {analyses.length === 0 ? (
+      ) : activeTab === 'repositories' ? (
+        /* ─── TAB 1: ANALYZED REPOSITORIES ─── */
+        filteredRepos.length === 0 ? (
+          <div className="p-12 text-center rounded-2xl bg-charcoal-900 border border-dashed border-charcoal-700/70 space-y-3">
+            <FolderGit2 className="w-12 h-12 text-charcoal-600 mx-auto" />
+            <h3 className="text-base font-semibold text-charcoal-200">
+              {userRepos.length === 0 ? 'No repositories analyzed in MongoDB yet' : 'No matching repositories found'}
+            </h3>
+            <p className="text-xs text-charcoal-400 max-w-md mx-auto">
+              {userRepos.length === 0
+                ? 'Enter any GitHub URL on the Dashboard and click "Analyze Repository". It will be permanently stored in your MongoDB account!'
+                : 'Try adjusting your search query or language filter.'}
+            </p>
+            <div className="pt-2">
               <Button
                 variant="primary"
                 size="sm"
@@ -237,119 +342,198 @@ export const History = () => {
               >
                 Analyze a Repository Now
               </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearchTerm('');
-                  setSelectedLanguage('ALL');
-                }}
-              >
-                Reset Search Filters
-              </Button>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* Analyses List */
-        <div className="space-y-3">
-          {filteredAnalyses.map((item) => (
-            <div
-              key={item._id}
-              onClick={() => setSelectedAnalysis(item)}
-              className="p-5 rounded-xl bg-charcoal-900 border border-charcoal-700/70 hover:border-brand-500/50 hover:bg-charcoal-850/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer group shadow-sm"
-            >
-              {/* Left Details */}
-              <div className="space-y-2 flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <FolderGit2 className="w-4 h-4 text-brand-400 shrink-0" />
-                  <span className="font-semibold text-sm text-charcoal-100 font-mono truncate">
-                    {item.repositoryName}
-                  </span>
-
-                  <Badge variant="cyan" size="xs">
-                    {item.language || 'text'}
-                  </Badge>
-
-                  {item.repositoryUrl && (
-                    <a
-                      href={item.repositoryUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 text-[11px] text-charcoal-400 hover:text-brand-300 font-mono transition-colors"
-                      title="Open GitHub repository"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      GitHub
-                    </a>
-                  )}
-                </div>
-
-                {/* File Path Indicator */}
-                <div className="flex items-center gap-1.5 text-xs text-charcoal-300 font-mono">
-                  <FileCode className="w-3.5 h-3.5 text-brand-400 shrink-0" />
-                  <span className="text-brand-300 bg-charcoal-800/80 px-2 py-0.5 rounded border border-charcoal-700/60 truncate max-w-md">
-                    {item.selectedFile}
-                  </span>
-                </div>
-
-                {/* Explanation Snippet */}
-                <p className="text-xs text-charcoal-400 line-clamp-2 leading-relaxed">
-                  {item.explanation}
-                </p>
-
-                {/* Timestamp */}
-                <div className="flex items-center gap-2 text-[11px] text-charcoal-500 pt-1">
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>
-                    Analyzed on{' '}
-                    {new Date(item.createdAt).toLocaleString(undefined, {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })}
-                  </span>
-                </div>
-              </div>
-
-              {/* Right Action Buttons */}
-              <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedAnalysis(item);
-                  }}
-                  icon={Eye}
-                >
-                  View Details
-                </Button>
-
-                <button
-                  onClick={(e) => handleDelete(item._id, e)}
-                  disabled={deletingId === item._id}
-                  className="p-2 rounded-lg text-charcoal-500 hover:text-rose-400 hover:bg-charcoal-800 transition-colors cursor-pointer disabled:opacity-50"
-                  title="Delete from history"
-                >
-                  {deletingId === item._id ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-rose-400" />
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredRepos.map((repo) => (
+              <div
+                key={repo.id || repo._id}
+                className="p-5 rounded-xl bg-charcoal-900 border border-charcoal-700/70 hover:border-brand-500/50 hover:bg-charcoal-850/60 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group shadow-sm"
+              >
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <FolderGit2 className="w-4 h-4 text-brand-400 shrink-0" />
+                    <span
+                      onClick={() => handleOpenRepo(repo.id)}
+                      className="font-semibold text-sm text-charcoal-100 hover:text-white cursor-pointer font-mono truncate"
+                    >
+                      {repo.fullName}
+                    </span>
+                    <Badge variant="cyan" size="xs">
+                      {repo.primaryLanguage || 'JavaScript'}
+                    </Badge>
+                    <span className="text-[11px] text-charcoal-500 font-mono hidden sm:inline">
+                      Branch: {repo.defaultBranch || 'main'}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-charcoal-400 line-clamp-2 max-w-2xl leading-relaxed">
+                    {repo.description || 'Public GitHub repository analyzed via RepoMind.'}
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-charcoal-400">
+                    <span className="flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 text-amber-400" />
+                      {(repo.stars || 0).toLocaleString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <GitFork className="w-3.5 h-3.5 text-charcoal-500" />
+                      {(repo.forks || 0).toLocaleString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FileCode className="w-3.5 h-3.5 text-brand-400" />
+                      {repo.analysisStats?.totalFiles || 0} files
+                    </span>
+                    <span className="text-charcoal-500 text-[11px]">
+                      Analyzed:{' '}
+                      {new Date(repo.analyzedAt || repo.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleOpenRepo(repo.id)}
+                    iconRight={ArrowRight}
+                  >
+                    Open Workspace
+                  </Button>
+
+                  <button
+                    onClick={(e) => handleDeleteRepo(repo.id, e)}
+                    disabled={deletingId === repo.id}
+                    className="p-2 rounded-lg text-charcoal-500 hover:text-rose-400 hover:bg-charcoal-800 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Delete from MongoDB"
+                  >
+                    {deletingId === repo.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-rose-400" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        /* ─── TAB 2: CODE FILE EXPLANATIONS ─── */
+        filteredAnalyses.length === 0 ? (
+          <div className="p-12 text-center rounded-2xl bg-charcoal-900 border border-dashed border-charcoal-700/70 space-y-3">
+            <FileCode className="w-12 h-12 text-charcoal-600 mx-auto" />
+            <h3 className="text-base font-semibold text-charcoal-200">
+              {analyses.length === 0 ? 'No code file explanations saved yet' : 'No matching explanations found'}
+            </h3>
+            <p className="text-xs text-charcoal-400 max-w-md mx-auto">
+              {analyses.length === 0
+                ? 'Whenever you click "Explain Code" on a file in the Repository Analysis panel, Gemini automatically persists the explanation to your MongoDB account.'
+                : 'Try adjusting your search query or language filter.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredAnalyses.map((item) => (
+              <div
+                key={item._id}
+                onClick={() => setSelectedAnalysis(item)}
+                className="p-5 rounded-xl bg-charcoal-900 border border-charcoal-700/70 hover:border-brand-500/50 hover:bg-charcoal-850/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer group shadow-sm"
+              >
+                <div className="space-y-2 flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <FolderGit2 className="w-4 h-4 text-brand-400 shrink-0" />
+                    <span className="font-semibold text-sm text-charcoal-100 font-mono truncate">
+                      {item.repositoryName}
+                    </span>
+
+                    <Badge variant="cyan" size="xs">
+                      {item.language || 'text'}
+                    </Badge>
+
+                    {item.repositoryUrl && (
+                      <a
+                        href={item.repositoryUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-[11px] text-charcoal-400 hover:text-brand-300 font-mono transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        GitHub
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-xs text-charcoal-300 font-mono">
+                    <FileCode className="w-3.5 h-3.5 text-brand-400 shrink-0" />
+                    <span className="text-brand-300 bg-charcoal-800/80 px-2 py-0.5 rounded border border-charcoal-700/60 truncate max-w-md">
+                      {item.selectedFile}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-charcoal-400 line-clamp-2 leading-relaxed">
+                    {item.explanation}
+                  </p>
+
+                  <div className="flex items-center gap-2 text-[11px] text-charcoal-500 pt-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>
+                      Analyzed on{' '}
+                      {new Date(item.createdAt).toLocaleString(undefined, {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedAnalysis(item);
+                    }}
+                    icon={Eye}
+                  >
+                    View Details
+                  </Button>
+
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={(e) => handleOpenAnalysisWorkspace(item, e)}
+                    iconRight={ArrowRight}
+                  >
+                    Open Workspace
+                  </Button>
+
+                  <button
+                    onClick={(e) => handleDeleteAnalysis(item._id, e)}
+                    disabled={deletingId === item._id}
+                    className="p-2 rounded-lg text-charcoal-500 hover:text-rose-400 hover:bg-charcoal-800 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Delete from history"
+                  >
+                    {deletingId === item._id ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-rose-400" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       )}
 
       {/* Analysis Detail Modal */}
       {selectedAnalysis && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-charcoal-900 border border-charcoal-700 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-            {/* Modal Header */}
             <div className="p-4 border-b border-charcoal-700/80 flex items-center justify-between bg-charcoal-850">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-brand-500/10 border border-brand-500/30 flex items-center justify-center">
@@ -386,7 +570,6 @@ export const History = () => {
               </div>
             </div>
 
-            {/* Modal Subheader Meta */}
             <div className="px-5 py-2.5 bg-charcoal-950/60 border-b border-charcoal-800 flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2">
                 <Badge variant="cyan" size="xs">
@@ -409,31 +592,39 @@ export const History = () => {
               </span>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-4 text-xs leading-relaxed text-charcoal-200">
               <div className="p-4 rounded-xl bg-charcoal-850 border border-charcoal-700/60 whitespace-pre-line font-sans">
                 {selectedAnalysis.explanation}
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="p-4 border-t border-charcoal-700/80 bg-charcoal-850 flex items-center justify-between">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={(e) => handleDelete(selectedAnalysis._id, e)}
+                onClick={(e) => handleDeleteAnalysis(selectedAnalysis._id, e)}
                 icon={Trash2}
                 className="text-rose-400 hover:text-rose-300 border-rose-500/20 hover:bg-rose-500/10"
               >
                 Delete Analysis
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setSelectedAnalysis(null)}
-              >
-                Close
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedAnalysis(null)}
+                >
+                  Close
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleOpenAnalysisWorkspace(selectedAnalysis)}
+                  iconRight={ArrowRight}
+                >
+                  Open in Workspace
+                </Button>
+              </div>
             </div>
           </div>
         </div>

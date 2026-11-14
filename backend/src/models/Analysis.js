@@ -37,17 +37,19 @@ const analysisSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Explanation content is required'],
     },
+    analysisData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 
-// Compound index to prevent exact duplicate analyses
-// Same user + same repo + same file within a short time is likely a duplicate
+analysisSchema.index({ userId: 1, repositoryName: 1, selectedFile: 1 });
 analysisSchema.index({ userId: 1, createdAt: -1 });
 
 const Analysis = mongoose.model('Analysis', analysisSchema);
 
 export default Analysis;
-

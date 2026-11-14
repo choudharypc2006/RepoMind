@@ -7,7 +7,15 @@ import Analysis from '../models/Analysis.js';
  */
 export async function saveAnalysis(req, res, next) {
   try {
-    const { repositoryName, repositoryUrl, owner, selectedFile, language, explanation } = req.body;
+    const {
+      repositoryName,
+      repositoryUrl,
+      owner,
+      selectedFile,
+      language,
+      explanation,
+      analysisData,
+    } = req.body;
 
     // --- Validate required fields ---
     if (!repositoryName || !selectedFile || !explanation) {
@@ -17,39 +25,70 @@ export async function saveAnalysis(req, res, next) {
       });
     }
 
-    // --- Prevent duplicate saves (same user + same repo + same file within 30 seconds) ---
-    const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
-    const duplicate = await Analysis.findOne({
-      userId: req.user._id,
-      repositoryName,
-      selectedFile,
-      createdAt: { $gte: thirtySecondsAgo },
-    });
+    // Save or update existing analysis for this file & user
+    const analysis = await Analysis.findOneAndUpdate(
+      {
+        userId: req.user._id,
+        repositoryName,
+        selectedFile,
+      },
+      {
+        userId: req.user._id,
+        repositoryName,
+        repositoryUrl: repositoryUrl || '',
+        owner: owner || '',
+        selectedFile,
+        language: language || 'text',
+        explanation,
+        analysisData: analysisData || null,
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
+    );
 
-    if (duplicate) {
-      // Return the existing record instead of creating a new one
-      return res.status(200).json({
-        success: true,
-        message: 'Analysis already saved.',
-        data: duplicate,
-      });
-    }
+    console.log(
+      `[Analysis] Saved full AI analysis for "${repositoryName}/${selectedFile}" (user: ${req.user.email})`
+    );
 
-    // --- Create the analysis document ---
-    const analysis = await Analysis.create({
-      userId: req.user._id,
-      repositoryName,
-      repositoryUrl: repositoryUrl || '',
-      owner: owner || '',
-      selectedFile,
-      language: language || 'text',
-      explanation,
-    });
-
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       message: 'Analysis saved successfully.',
       data: analysis,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/analysis/file?repo=...&path=...
+ * Fetch previously saved analysis for a specific file in a repository
+ */
+export async function getFileAnalysis(req, res, next) {
+  try {
+    const { repo, path } = req.query;
+
+    if (!repo || !path) {
+      return res.status(400).json({
+        success: false,
+        error: 'Query parameters "repo" and "path" are required.',
+      });
+    }
+
+    const analysis = await Analysis.findOne({
+      userId: req.user._id,
+      repositoryName: repo,
+      selectedFile: path,
+    })
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .select('-__v');
+
+    res.status(200).json({
+      success: true,
+      data: analysis || null,
     });
   } catch (error) {
     next(error);
@@ -63,7 +102,7 @@ export async function saveAnalysis(req, res, next) {
 export async function getUserAnalyses(req, res, next) {
   try {
     const analyses = await Analysis.find({ userId: req.user._id })
-      .sort({ createdAt: -1 })
+      .sort({ updatedAt: -1, createdAt: -1 })
       .select('-__v');
 
     res.status(200).json({
@@ -104,7 +143,6 @@ export async function getAnalysisById(req, res, next) {
       data: analysis,
     });
   } catch (error) {
-    // Handle invalid ObjectId format
     if (error.kind === 'ObjectId') {
       return res.status(400).json({
         success: false,
@@ -154,4 +192,3 @@ export async function deleteAnalysis(req, res, next) {
     next(error);
   }
 }
-

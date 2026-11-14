@@ -32,7 +32,7 @@ export const Settings = () => {
     resetDefaultData();
     setFormData({
       theme: 'charcoal',
-      aiModel: 'gemini-1.5-pro',
+      aiModel: 'gemini-3.8-flash',
       analysisDepth: 'deep',
       autoExplain: true,
       fontSize: 14,
@@ -87,14 +87,17 @@ export const Settings = () => {
               <select
                 value={formData.aiModel}
                 onChange={(e) => setFormData({ ...formData, aiModel: e.target.value })}
-                className="w-full bg-charcoal-950 border border-charcoal-700 rounded-lg px-3 py-2 text-xs text-charcoal-200 focus:outline-none focus:border-brand-500"
+                className="w-full bg-charcoal-950 border border-charcoal-700 rounded-lg px-3 py-2 text-xs text-charcoal-200 focus:outline-none focus:border-brand-500 font-mono"
               >
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro (Recommended - Deep Reasoning)</option>
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Ultra Fast Latency)</option>
-                <option value="gemini-ultra-experimental">Gemini Ultra (Experimental Complex AST)</option>
+                <option value="gemini-3.8-flash">
+                  Gemini 3.8 Flash (Active Default • 1M Tokens • Ultra Fast)
+                </option>
+                <option value="gemini-3.5-flash-lite">
+                  Gemini 3.5 Flash Lite (High Throughput • 1M Tokens • Low Latency)
+                </option>
               </select>
               <p className="text-[11px] text-charcoal-500">
-                Gemini 1.5 Pro delivers the most balanced syntax comprehension and security audits.
+                Both models support massive 1 Million token context windows for full-file code reviews with automated rate-limit fallback.
               </p>
             </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   GitBranch,
   Github,
@@ -46,12 +46,17 @@ export const RepositoryAnalysis = () => {
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
 
-  // Sync route params with selected repo
+  const [searchParams] = useSearchParams();
+  const fileQuery = searchParams.get('file');
+
+  // Sync route params with selected repo (and auto-select file if queried)
   useEffect(() => {
-    if (repoId && repoId !== selectedRepoId) {
-      selectRepository(repoId);
+    if (repoId) {
+      if (repoId !== selectedRepoId || fileQuery) {
+        selectRepository(repoId, fileQuery);
+      }
     }
-  }, [repoId]);
+  }, [repoId, fileQuery]);
 
   const handleExplainCode = async () => {
     if (window.innerWidth < 1024) {

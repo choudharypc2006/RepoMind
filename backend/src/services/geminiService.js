@@ -13,8 +13,75 @@ function getGeminiClient() {
   return new GoogleGenAI({ apiKey });
 }
 
+/**
+ * List of supported high-token Gemini models active on this API tier
+ */
+export const SUPPORTED_MODELS = [
+  {
+    id: 'gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash',
+    contextTokens: '1,048,576 tokens (1M)',
+    speed: 'Ultra Fast',
+    description: 'Active primary model with 1M token context window. Excellent for rapid, in-depth code reviews.',
+    isDefault: true,
+  },
+  {
+    id: 'gemini-3.5-flash-lite',
+    name: 'Gemini 3.5 Flash Lite',
+    contextTokens: '1,048,576 tokens (1M)',
+    speed: 'Blazing Fast',
+    description: 'Latest high-throughput model with 1M token context window and ultra-low latency.',
+  },
+];
+
 // Default model to use (supported across standard Gemini API keys)
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+
+/**
+ * Validate or fallback model ID
+ */
+export function resolveModel(modelId) {
+  if (modelId && SUPPORTED_MODELS.some((m) => m.id === modelId)) {
+    return modelId;
+  }
+  return DEFAULT_MODEL;
+}
+
+/**
+ * Helper to safely parse raw error objects from Google Gen AI SDK
+ */
+function parseGeminiError(error) {
+  let code = error.status || error.code || error.statusCode;
+  let statusText = '';
+  let message = error.message || '';
+
+  // Handle case where error.message is a raw JSON string from Google
+  if (typeof message === 'string' && message.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed.error) {
+        code = parsed.error.code || code;
+        statusText = parsed.error.status || statusText;
+        message = parsed.error.message || message;
+      }
+    } catch (_) {}
+  }
+
+  // Handle case where error.error is an object
+  if (error.error && typeof error.error === 'object') {
+    code = error.error.code || code;
+    statusText = error.error.status || statusText;
+    message = error.error.message || message;
+  }
+
+  const numericCode = typeof code === 'number' ? code : parseInt(code, 10) || null;
+
+  return {
+    code: numericCode,
+    statusText: String(statusText || error.status || '').toUpperCase(),
+    message: String(message || '').trim(),
+  };
+}
 
 /**
  * Handle and format Gemini SDK errors into clean user-facing errors
@@ -26,37 +93,154 @@ function handleGeminiError(error) {
     throw error;
   }
 
-  const message = error.message || '';
-  const status = error.status || error.code;
+  const { code, statusText, message } = parseGeminiError(error);
+  const msgLower = message.toLowerCase();
 
-  if (status === 429 || message.toLowerCase().includes('resource has been exhausted') || message.toLowerCase().includes('rate limit')) {
-    const err = new Error('Gemini API rate limit exceeded. Please wait a moment and try again.');
+  // 503 / High demand / Overloaded
+  if (
+    code === 503 ||
+    statusText === 'UNAVAILABLE' ||
+    msgLower.includes('high demand') ||
+    msgLower.includes('temporary') ||
+    msgLower.includes('overloaded') ||
+    msgLower.includes('unavailable')
+  ) {
+    const err = new Error(
+      'Google Gemini is currently experiencing temporary high demand on this model. Please wait a few moments or switch to Gemini 2.0 Flash Lite.'
+    );
+    err.statusCode = 503;
+    throw err;
+  }
+
+  // 429 / Rate Limit
+  if (
+    code === 429 ||
+    statusText === 'RESOURCE_EXHAUSTED' ||
+    msgLower.includes('resource has been exhausted') ||
+    msgLower.includes('rate limit') ||
+    msgLower.includes('quota')
+  ) {
+    const err = new Error(
+      'Gemini API rate limit reached. Please wait a moment or switch to another free model.'
+    );
     err.statusCode = 429;
     throw err;
   }
 
-  if (status === 400 || message.toLowerCase().includes('api_key') || message.toLowerCase().includes('api key not valid')) {
-    const err = new Error('Invalid Gemini API Key. Please verify your GEMINI_API_KEY in backend/.env.');
+  // 400 / 401 / Invalid API Key
+  if (
+    code === 400 ||
+    code === 401 ||
+    msgLower.includes('api_key') ||
+    msgLower.includes('api key not valid')
+  ) {
+    const err = new Error(
+      'Invalid Gemini API Key. Please verify your GEMINI_API_KEY in backend/.env.'
+    );
     err.statusCode = 401;
     throw err;
   }
 
-  if (message.toLowerCase().includes('safety') || message.toLowerCase().includes('blocked')) {
+  // Content Safety Filter
+  if (msgLower.includes('safety') || msgLower.includes('blocked')) {
     const err = new Error('The request was flagged by Gemini content safety filters.');
     err.statusCode = 400;
     throw err;
   }
 
   const err = new Error(message || 'Failed to communicate with Google Gemini API.');
-  err.statusCode = status && typeof status === 'number' ? status : 500;
+  err.statusCode = code || 500;
   throw err;
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
- * Analyze a source code file using Gemini
- * Returns structured JSON with summary, detailed explanation, functions, key concepts, issues, and improvements.
+ * Executes a Gemini request with automatic fallback to alternative high-token models
+ * if the chosen model hits rate limits (429), high demand (503), or is not found (404).
  */
-export async function explainCode({ repoName, filePath, language, code }) {
+async function executeWithModelFallback(requestFn, preferredModel) {
+  let primary = resolveModel(preferredModel);
+
+  // If user selected an outdated or deprecated model, sanitize to corresponding modern model
+  if (primary.includes('lite') || primary.includes('flash-lite')) {
+    primary = 'gemini-3.5-flash-lite';
+  } else if (
+    primary.includes('1.5') ||
+    primary.includes('2.0') ||
+    primary.includes('2.5') ||
+    !SUPPORTED_MODELS.some((m) => m.id === primary)
+  ) {
+    primary = DEFAULT_MODEL; // gemini-3.8-flash
+  }
+
+  // Active high-token models candidate chain:
+  const candidateChain = [
+    primary,
+    DEFAULT_MODEL,
+    'gemini-3.8-flash',
+    'gemini-3.5-flash-lite',
+  ];
+
+  // Filter unique models while preserving order
+  const uniqueChain = Array.from(new Set(candidateChain));
+
+  let lastError = null;
+
+  for (let i = 0; i < uniqueChain.length; i++) {
+    const currentModel = uniqueChain[i];
+    try {
+      const response = await requestFn(currentModel);
+      return { response, modelUsed: currentModel };
+    } catch (err) {
+      lastError = err;
+      const { code, statusText, message } = parseGeminiError(err);
+      const msgLower = message.toLowerCase();
+
+      // Check if error is recoverable by switching models
+      const canSwitch =
+        code === 503 ||
+        code === 429 ||
+        code === 404 ||
+        code === 500 ||
+        statusText === 'UNAVAILABLE' ||
+        statusText === 'RESOURCE_EXHAUSTED' ||
+        statusText === 'NOT_FOUND' ||
+        statusText === 'DEADLINE_EXCEEDED' ||
+        msgLower.includes('503') ||
+        msgLower.includes('429') ||
+        msgLower.includes('404') ||
+        msgLower.includes('high demand') ||
+        msgLower.includes('temporary') ||
+        msgLower.includes('overloaded') ||
+        msgLower.includes('rate limit') ||
+        msgLower.includes('resource has been exhausted') ||
+        msgLower.includes('unavailable') ||
+        msgLower.includes('not found') ||
+        msgLower.includes('not supported') ||
+        msgLower.includes('is no longer available') ||
+        msgLower.includes('try again later');
+
+      if (canSwitch && i < uniqueChain.length - 1) {
+        console.warn(
+          `[Gemini Auto-Switch]: Model "${currentModel}" unavailable (${code || statusText}: ${message.slice(0, 80)}...). Switching to "${uniqueChain[i + 1]}"...`
+        );
+        await sleep(350);
+        continue;
+      }
+
+      // Non-recoverable error (e.g. invalid API key, prompt safety violation)
+      break;
+    }
+  }
+
+  handleGeminiError(lastError);
+}
+
+/**
+ * Analyze a source code file using Gemini with model switching support.
+ */
+export async function explainCode({ repoName, filePath, language, code, model }) {
   if (!code || typeof code !== 'string') {
     const err = new Error('Source code is required for AI analysis.');
     err.statusCode = 400;
@@ -111,49 +295,49 @@ Respond with a strictly valid JSON object matching this exact structure:
 }
 Do not wrap the response with markdown code blocks if possible, or use standard raw JSON format.`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: GEMINI_MODEL,
+  const { response, modelUsed } = await executeWithModelFallback(async (activeModel) => {
+    return await ai.models.generateContent({
+      model: activeModel,
       contents: prompt,
       config: {
         systemInstruction,
         responseMimeType: 'application/json',
       },
     });
+  }, model);
 
-    const responseText = response.text?.trim() || '';
+  const responseText = response.text?.trim() || '';
 
-    // Parse the JSON safely
-    try {
-      // Remove any accidental markdown backticks if returned despite json mime type
-      const cleaned = responseText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-      const parsed = JSON.parse(cleaned);
-      return parsed;
-    } catch (parseErr) {
-      console.warn('Failed to parse Gemini response as pure JSON, returning raw text fallback:', parseErr);
-      return {
-        summary: responseText.slice(0, 300),
-        detailedExplanation: responseText,
-        functions: [],
-        importantConcepts: [],
-        potentialIssues: [],
-        suggestions: [],
-        metrics: {
-          maintainabilityIndex: 80,
-          complexity: 'Normal',
-        },
-      };
-    }
-  } catch (error) {
-    handleGeminiError(error);
+  // Parse the JSON safely
+  let parsed;
+  try {
+    const cleaned = responseText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+    parsed = JSON.parse(cleaned);
+  } catch (parseErr) {
+    console.warn('Failed to parse Gemini response as pure JSON, returning raw text fallback:', parseErr);
+    parsed = {
+      summary: responseText.slice(0, 300),
+      detailedExplanation: responseText,
+      functions: [],
+      importantConcepts: [],
+      potentialIssues: [],
+      suggestions: [],
+      metrics: {
+        maintainabilityIndex: 80,
+        complexity: 'Normal',
+      },
+    };
   }
+
+  // Attach which model fulfilled the request
+  parsed.modelUsed = modelUsed;
+  return parsed;
 }
 
 /**
- * Chat with Gemini about the selected source code file
- * Maintains context of the file and prior chat messages
+ * Chat with Gemini about the selected source code file with model switching support.
  */
-export async function chatAboutCode({ filePath, code, messages = [], question }) {
+export async function chatAboutCode({ filePath, code, messages = [], question, model }) {
   if (!question || !question.trim()) {
     const err = new Error('Question is required for AI chat.');
     err.statusCode = 400;
@@ -177,10 +361,7 @@ Rules:
 5. If the user asks something that cannot be answered from this file, explain that clearly.`;
 
   // Build the message history
-  // Format for Gemini API contents
   const contents = [];
-
-  // Add previous conversation turns
   for (const msg of messages) {
     if (msg.role === 'user') {
       contents.push({
@@ -195,28 +376,25 @@ Rules:
     }
   }
 
-  // Add the current user question
   contents.push({
     role: 'user',
     parts: [{ text: question }],
   });
 
-  try {
-    const response = await ai.models.generateContent({
-      model: GEMINI_MODEL,
+  const { response, modelUsed } = await executeWithModelFallback(async (activeModel) => {
+    return await ai.models.generateContent({
+      model: activeModel,
       contents,
       config: {
         systemInstruction,
       },
     });
+  }, model);
 
-    const reply = response.text?.trim() || 'No response generated.';
-    return {
-      reply,
-      timestamp: new Date().toISOString(),
-    };
-  } catch (error) {
-    handleGeminiError(error);
-  }
+  const reply = response.text?.trim() || 'No response generated.';
+  return {
+    reply,
+    modelUsed,
+    timestamp: new Date().toISOString(),
+  };
 }
-

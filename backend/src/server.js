@@ -11,6 +11,7 @@ import githubRoutes from './routes/githubRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import analysisRoutes from './routes/analysisRoutes.js';
+import repoHistoryRoutes from './routes/repoHistoryRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,14 +41,16 @@ app.use(
   })
 );
 
-// 2. Request body & Cookie parsing
-app.use(express.json());
+// 2. Request body & Cookie parsing (increased limit to allow large repo trees)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 // 3. Mount Routes
 app.use('/', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/user-repos', repoHistoryRoutes);
 app.use('/api/github', githubRoutes);
 app.use('/api/ai', aiRoutes);
 

@@ -17,10 +17,16 @@ import {
   MessageSquare,
   FileText,
   ListChecks,
+  ChevronDown,
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
 import { useRepo } from '../../context/RepoContext';
+
+const AVAILABLE_GEMINI_MODELS = [
+  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', tag: '1M tokens', badge: 'Ultra Fast' },
+  { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Lite', tag: '1M tokens', badge: 'High Throughput' },
+];
 
 export const AIAnalysisPanel = ({
   file,
@@ -28,7 +34,7 @@ export const AIAnalysisPanel = ({
   explainError = null,
   onTriggerExplain,
 }) => {
-  const { askGeminiAboutFile } = useRepo();
+  const { askGeminiAboutFile, activeAiModel, setActiveAiModel } = useRepo();
   const [activeTab, setActiveTab] = useState('explanation'); // explanation | functions | complexity | chat
   const [chatMessages, setChatMessages] = useState([]);
   const [inputQuestion, setInputQuestion] = useState('');
@@ -149,9 +155,23 @@ ${(analysis.suggestions || []).map((s) => `- ${s}`).join('\n')}
         </div>
 
         <div className="flex items-center gap-1.5">
-          <Badge variant="brand" size="xs">
-            Gemini 3.8 Flash
-          </Badge>
+          {/* Interactive Model Switcher with High-Token indicator */}
+          <div className="relative flex items-center">
+            <select
+              value={activeAiModel || 'gemini-3.8-flash'}
+              onChange={(e) => setActiveAiModel(e.target.value)}
+              className="bg-charcoal-850 hover:bg-charcoal-800 text-brand-300 border border-brand-500/30 rounded-md text-[11px] font-mono py-1 pl-2 pr-5 appearance-none cursor-pointer focus:outline-none focus:border-brand-500 transition-colors shadow-sm"
+              title="Switch between high-token Gemini models"
+            >
+              {AVAILABLE_GEMINI_MODELS.map((m) => (
+                <option key={m.id} value={m.id} className="bg-charcoal-900 text-charcoal-200">
+                  {m.label} ({m.tag})
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3 h-3 text-brand-400/80 absolute right-1.5 pointer-events-none" />
+          </div>
+
           <button
             onClick={handleCopyAnalysis}
             className="p-1 rounded text-charcoal-400 hover:text-charcoal-200 hover:bg-charcoal-800 transition-colors cursor-pointer"
@@ -244,7 +264,9 @@ ${(analysis.suggestions || []).map((s) => `- ${s}`).join('\n')}
               <div className="p-3 rounded-lg bg-brand-500/10 border border-brand-500/30 flex items-center justify-between">
                 <div>
                   <span className="font-medium text-brand-200 block">Run Real Gemini Analysis</span>
-                  <span className="text-[11px] text-charcoal-400">Inspect this file with Google Gemini 3.8 Flash</span>
+                  <span className="text-[11px] text-charcoal-400">
+                    Inspect this file with {AVAILABLE_GEMINI_MODELS.find((m) => m.id === activeAiModel)?.label || 'Gemini'} ({AVAILABLE_GEMINI_MODELS.find((m) => m.id === activeAiModel)?.tag || 'High Token Context'})
+                  </span>
                 </div>
                 <Button
                   variant="primary"

@@ -1,7 +1,10 @@
 import { Router } from 'express';
-import { explainFile, chatFile } from '../controllers/aiController.js';
+import { explainFile, chatFile, getModels } from '../controllers/aiController.js';
 
 const router = Router();
+
+// GET /api/ai/models - List supported free high-token Gemini models
+router.get('/models', getModels);
 
 // POST /api/ai/explain - Generate AI explanation for the selected code file
 router.post('/explain', explainFile);
@@ -10,4 +13,3 @@ router.post('/explain', explainFile);
 router.post('/chat', chatFile);
 
 export default router;
-

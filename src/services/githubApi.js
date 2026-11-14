@@ -110,9 +110,28 @@ export async function fetchFileContent(repoUrl, filePath, branch) {
 }
 
 /**
+ * Fetch supported high-token Gemini models from backend
+ */
+export async function fetchAiModels() {
+  const endpoint = `${API_BASE_URL}/api/ai/models`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return [];
+    const json = await response.json();
+    return json.data || [];
+  } catch (err) {
+    return [];
+  }
+}
+
+/**
  * Generate Gemini AI explanation for a given code file
  */
-export async function explainCodeFile({ repoName, filePath, language, code }) {
+export async function explainCodeFile({ repoName, filePath, language, code, model }) {
   const endpoint = `${API_BASE_URL}/api/ai/explain`;
 
   let response;
@@ -126,6 +145,7 @@ export async function explainCodeFile({ repoName, filePath, language, code }) {
         filePath,
         language,
         code,
+        model,
       }),
     });
   } catch (networkError) {
@@ -144,7 +164,7 @@ export async function explainCodeFile({ repoName, filePath, language, code }) {
 /**
  * Chat with Gemini about the selected source code file
  */
-export async function chatAboutFile({ filePath, code, messages, question }) {
+export async function chatAboutFile({ filePath, code, messages, question, model }) {
   const endpoint = `${API_BASE_URL}/api/ai/chat`;
 
   let response;
@@ -158,6 +178,7 @@ export async function chatAboutFile({ filePath, code, messages, question }) {
         code,
         messages,
         question,
+        model,
       }),
     });
   } catch (networkError) {
@@ -185,6 +206,7 @@ export async function saveAnalysisToHistory({
   selectedFile,
   language,
   explanation,
+  analysisData,
 }) {
   const endpoint = `${API_BASE_URL}/api/analysis`;
 
@@ -201,6 +223,7 @@ export async function saveAnalysisToHistory({
         selectedFile,
         language,
         explanation,
+        analysisData,
       }),
     });
   } catch (networkError) {
@@ -214,6 +237,26 @@ export async function saveAnalysisToHistory({
   }
 
   return json.data;
+}
+
+/**
+ * Fetch saved analysis for a specific file in a repository from MongoDB
+ */
+export async function fetchFileAnalysisFromDb(repoName, filePath) {
+  const endpoint = `${API_BASE_URL}/api/analysis/file?repo=${encodeURIComponent(repoName)}&path=${encodeURIComponent(filePath)}`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    return json.data || null;
+  } catch (err) {
+    return null;
+  }
 }
 
 /**
@@ -292,4 +335,76 @@ export async function deleteAnalysisById(analysisId) {
   }
 
   return json;
+}
+
+// ─── Analyzed Repositories History API ───────────────────────────────
+
+/**
+ * Fetch all repositories analyzed by the currently logged-in user
+ */
+export async function fetchUserReposFromDb() {
+  const endpoint = `${API_BASE_URL}/api/user-repos`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      console.warn('[RepoMind API] GET /api/user-repos returned status:', response.status);
+      return [];
+    }
+    const json = await response.json();
+    return json.data || [];
+  } catch (err) {
+    console.error('[RepoMind API] Error connecting to /api/user-repos:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Save an analyzed repository to the user's MongoDB history
+ */
+export async function saveUserRepoToDb(repoData) {
+  const endpoint = `${API_BASE_URL}/api/user-repos`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(repoData),
+    });
+    const json = await response.json();
+    if (!response.ok || !json.success) {
+      console.error('[RepoMind API] POST /api/user-repos failed:', response.status, json?.error);
+      return null;
+    }
+    return json.data || null;
+  } catch (err) {
+    console.error('[RepoMind API] Network error saving repository to MongoDB:', err.message);
+    return null;
+  }
+}
+
+/**
+ * Delete an analyzed repository from the user's MongoDB history
+ */
+export async function deleteUserRepoFromDb(repoId) {
+  const endpoint = `${API_BASE_URL}/api/user-repos/${encodeURIComponent(repoId)}`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    if (!response.ok) return false;
+    const json = await response.json();
+    return json.success;
+  } catch (err) {
+    console.warn('Failed to delete repository from MongoDB history:', err.message);
+    return false;
+  }
 }
