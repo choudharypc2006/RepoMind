@@ -17,17 +17,21 @@ export function generateToken(userId) {
 }
 
 /**
- * Set HTTP-only JWT Cookie on response
+ * Set HTTP-only JWT Cookie on response.
+ * Configured safely for both local development and cross-domain HTTPS production (Vercel/Render).
  * @param {object} res - Express response
  * @param {string} token - Signed JWT string
  */
 export function setAuthCookie(res, token) {
   const isProduction = process.env.NODE_ENV === 'production';
+  // If deployed across different domains, sameSite must be 'none' and secure must be true
+  const sameSiteSetting = process.env.COOKIE_SAMESITE || (isProduction ? 'none' : 'lax');
+  const isSecure = isProduction || sameSiteSetting === 'none';
 
   res.cookie('repomind_token', token, {
     httpOnly: true, // Prevents client-side JavaScript access (XSS protection)
-    secure: isProduction, // HTTPS only in production
-    sameSite: isProduction ? 'strict' : 'lax', // CSRF mitigation
+    secure: isSecure, // Required if sameSite is 'none'
+    sameSite: sameSiteSetting,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
     path: '/',
   });
@@ -39,13 +43,16 @@ export function setAuthCookie(res, token) {
  */
 export function clearAuthCookie(res) {
   const isProduction = process.env.NODE_ENV === 'production';
+  const sameSiteSetting = process.env.COOKIE_SAMESITE || (isProduction ? 'none' : 'lax');
+  const isSecure = isProduction || sameSiteSetting === 'none';
 
   res.cookie('repomind_token', '', {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    secure: isSecure,
+    sameSite: sameSiteSetting,
     expires: new Date(0), // Expire immediately
     path: '/',
   });
 }
 
+export default { generateToken, setAuthCookie, clearAuthCookie };

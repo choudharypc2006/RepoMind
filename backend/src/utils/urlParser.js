@@ -8,6 +8,8 @@
  * - http://github.com/owner/repo
  * - github.com/owner/repo
  * - https://github.com/owner/repo.git
+ * - git@github.com:owner/repo.git
+ * - https://github.com/owner/repo/tree/branch/path (auto-extracts repo)
  */
 export function parseGitHubUrl(rawUrl) {
   const createValidationError = (message) => {
@@ -16,11 +18,26 @@ export function parseGitHubUrl(rawUrl) {
     return error;
   };
 
-  if (!rawUrl || typeof rawUrl !== 'string') {
+  if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.trim()) {
     throw createValidationError('Repository URL parameter is required.');
   }
 
   const trimmed = rawUrl.trim();
+
+  // Support SSH git URLs: git@github.com:owner/repo.git
+  if (trimmed.startsWith('git@github.com:')) {
+    const sub = trimmed.replace('git@github.com:', '');
+    const parts = sub.split('/').filter(Boolean);
+    if (parts.length >= 2) {
+      const owner = parts[0];
+      const repo = parts[1].replace(/\.git$/, '');
+      return {
+        owner,
+        repo,
+        cleanUrl: `https://github.com/${owner}/${repo}`,
+      };
+    }
+  }
 
   // Normalize: prepend https:// if missing protocol
   const withProtocol = trimmed.startsWith('http://') || trimmed.startsWith('https://')
@@ -34,11 +51,16 @@ export function parseGitHubUrl(rawUrl) {
       throw createValidationError('Only public repositories on github.com are currently supported.');
     }
 
-    // Pathname looks like: /owner/repo or /owner/repo.git or /owner/repo/
+    // Pathname looks like: /owner/repo or /owner/repo.git or /owner/repo/tree/main
     const pathSegments = urlObj.pathname.split('/').filter(Boolean);
 
     if (pathSegments.length < 2) {
       throw createValidationError('Invalid GitHub URL. Must contain both owner and repository name (e.g., https://github.com/facebook/react).');
+    }
+
+    // If extra path segments are present, verify they are standard sub-routes like tree or blob
+    if (pathSegments.length > 2 && !['tree', 'blob'].includes(pathSegments[2])) {
+      throw createValidationError('Invalid GitHub URL structure. Must point to a repository root (e.g. https://github.com/facebook/react).');
     }
 
     const owner = pathSegments[0];
@@ -68,3 +90,4 @@ export function parseGitHubUrl(rawUrl) {
   }
 }
 
+export default parseGitHubUrl;

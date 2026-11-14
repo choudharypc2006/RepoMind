@@ -25,19 +25,26 @@ export async function explainFile(req, res, next) {
   try {
     const { repoName, filePath, language, code, model } = req.body;
 
-    if (!code || typeof code !== 'string') {
+    if (!code || typeof code !== 'string' || !code.trim()) {
       return res.status(400).json({
         success: false,
         error: 'Missing required field: code. Please provide source code to analyze.',
       });
     }
 
+    if (code.length > 200000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Source code exceeds maximum limit of 200,000 characters. Please select a smaller module.',
+      });
+    }
+
     const analysis = await geminiService.explainCode({
-      repoName,
-      filePath,
-      language,
+      repoName: typeof repoName === 'string' ? repoName.trim() : 'Repository',
+      filePath: typeof filePath === 'string' ? filePath.trim() : 'Unknown',
+      language: typeof language === 'string' ? language.trim() : 'text',
       code,
-      model,
+      model: typeof model === 'string' ? model.trim() : null,
     });
 
     return res.status(200).json({
@@ -66,12 +73,19 @@ export async function chatFile(req, res, next) {
       });
     }
 
+    if (question.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        error: 'Question is too long (maximum 2,000 characters).',
+      });
+    }
+
     const response = await geminiService.chatAboutCode({
-      filePath,
-      code,
-      messages: Array.isArray(messages) ? messages : [],
+      filePath: typeof filePath === 'string' ? filePath.trim() : 'Unknown',
+      code: typeof code === 'string' ? code : '',
+      messages: Array.isArray(messages) ? messages.slice(-10) : [], // Keep last 10 messages for context safety
       question: question.trim(),
-      model,
+      model: typeof model === 'string' ? model.trim() : null,
     });
 
     return res.status(200).json({

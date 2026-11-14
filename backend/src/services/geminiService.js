@@ -87,7 +87,8 @@ function parseGeminiError(error) {
  * Handle and format Gemini SDK errors into clean user-facing errors
  */
 function handleGeminiError(error) {
-  console.error('[Gemini Service Error]:', error);
+  const safeMsg = error?.message || 'Unknown Gemini error';
+  console.error(`[Gemini Service Error]: ${safeMsg.slice(0, 200)}`);
 
   if (error.statusCode) {
     throw error;
@@ -247,6 +248,12 @@ export async function explainCode({ repoName, filePath, language, code, model })
     throw err;
   }
 
+  // Safe truncation for very large source code files to protect token limits & latency
+  let sanitizedCode = code;
+  if (sanitizedCode.length > 50000) {
+    sanitizedCode = sanitizedCode.slice(0, 50000) + '\n\n// ... [Code truncated for AI analysis: exceeding 50,000 characters] ...\n';
+  }
+
   const ai = getGeminiClient();
 
   const systemInstruction = `You are a Principal Software Engineer and Staff Code Reviewer analyzing code in a GitHub repository analysis platform named RepoMind.
@@ -264,7 +271,7 @@ Your goals:
 - Language: ${language || 'Auto-detected'}
 
 \`\`\`${language || ''}
-${code}
+${sanitizedCode}
 \`\`\`
 
 Respond with a strictly valid JSON object matching this exact structure:
@@ -346,11 +353,17 @@ export async function chatAboutCode({ filePath, code, messages = [], question, m
 
   const ai = getGeminiClient();
 
+  // Safe truncation for file context in chat
+  let sanitizedCode = code || '// No code content available';
+  if (sanitizedCode.length > 50000) {
+    sanitizedCode = sanitizedCode.slice(0, 50000) + '\n\n// ... [Code context truncated: exceeding 50,000 characters] ...\n';
+  }
+
   const systemInstruction = `You are an expert AI code assistant inside RepoMind. You are helping a developer understand a specific file in a GitHub repository.
 Selected File Path: ${filePath || 'Unknown'}
 Source Code Context:
 \`\`\`
-${code || '// No code content available'}
+${sanitizedCode}
 \`\`\`
 
 Rules:

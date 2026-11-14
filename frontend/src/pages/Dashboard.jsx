@@ -188,8 +188,8 @@ export const Dashboard = () => {
             <Sparkles className="w-4 h-4 text-amber-400" />
           </div>
           <div className="mt-3">
-            <span className="text-base font-bold text-white font-mono">Gemini 1.5</span>
-            <span className="text-[11px] text-brand-400 ml-1.5">High Precision</span>
+            <span className="text-base font-bold text-white font-mono">Gemini 3.8</span>
+            <span className="text-[11px] text-brand-400 ml-1.5">1M Token Context</span>
           </div>
         </div>
 

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
+import { MarkdownRenderer } from '../common/MarkdownRenderer';
 import { useRepo } from '../../context/RepoContext';
 
 const AVAILABLE_GEMINI_MODELS = [
@@ -297,9 +298,7 @@ ${(analysis.suggestions || []).map((s) => `- ${s}`).join('\n')}
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-charcoal-400 block">
                   Detailed Architectural Breakdown
                 </span>
-                <p className="text-charcoal-300 leading-relaxed whitespace-pre-line">
-                  {analysis.detailedExplanation}
-                </p>
+                <MarkdownRenderer content={analysis.detailedExplanation} className="text-charcoal-300" />
               </div>
             )}
 
@@ -468,13 +467,17 @@ ${(analysis.suggestions || []).map((s) => `- ${s}`).join('\n')}
                   className={`p-2.5 rounded-lg text-xs leading-relaxed ${
                     msg.role === 'user'
                       ? 'bg-brand-600/15 border border-brand-500/30 text-brand-100 ml-4'
-                      : 'bg-charcoal-850 border border-charcoal-700/60 text-charcoal-300 mr-2 whitespace-pre-line'
+                      : 'bg-charcoal-850 border border-charcoal-700/60 text-charcoal-300 mr-2'
                   }`}
                 >
                   <div className="font-semibold text-[10px] uppercase tracking-wider mb-1 opacity-60">
                     {msg.role === 'user' ? 'You' : 'Gemini AI'}
                   </div>
-                  {msg.text}
+                  {msg.role === 'user' ? (
+                    <div className="whitespace-pre-line">{msg.text}</div>
+                  ) : (
+                    <MarkdownRenderer content={msg.text} />
+                  )}
                 </div>
               ))}
 

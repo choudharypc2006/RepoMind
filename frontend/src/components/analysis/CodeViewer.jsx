@@ -14,8 +14,11 @@ import {
   Loader2,
   AlertTriangle,
   FileWarning,
+  WrapText,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '../common/Button';
+import { SkeletonCodeLines } from '../common/Skeleton';
 
 // Language selector options
 const SUPPORTED_LANGUAGES = [
@@ -47,6 +50,7 @@ export const CodeViewer = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [fontSize, setFontSize] = useState(13);
+  const [wordWrap, setWordWrap] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(file?.language || 'javascript');
 
   // Sync selected language when file changes
@@ -250,6 +254,20 @@ export const CodeViewer = ({
             </button>
           </div>
 
+          {/* Word Wrap Toggle */}
+          <button
+            onClick={() => setWordWrap(!wordWrap)}
+            className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors cursor-pointer ${
+              wordWrap
+                ? 'bg-brand-500/20 text-brand-300 border-brand-500/40'
+                : 'bg-charcoal-800 text-charcoal-400 hover:text-charcoal-200 border-charcoal-700'
+            }`}
+            title="Toggle Word Wrap"
+          >
+            <WrapText className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-mono">Wrap</span>
+          </button>
+
           {/* Copy Code Button */}
           <button
             onClick={handleCopy}
@@ -283,13 +301,15 @@ export const CodeViewer = ({
         </div>
       </div>
 
-      {/* Code Text Area with Line Numbers, Loading, or Error */}
+      {/* Code Text Area with Line Numbers, Skeleton Loading, or Error */}
       <div className="flex-1 overflow-auto bg-charcoal-950 font-mono text-charcoal-200 select-text p-4 relative">
         {isFileLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-charcoal-950/90 z-10 backdrop-blur-xs">
-            <Loader2 className="w-8 h-8 text-brand-400 animate-spin mb-3" />
-            <p className="text-sm text-charcoal-200 font-medium">Fetching file content from GitHub...</p>
-            <p className="text-xs text-charcoal-500 font-mono mt-1">{file.path}</p>
+          <div className="h-full flex flex-col relative">
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-charcoal-900/90 border border-brand-500/30 text-brand-300 text-xs shadow-lg backdrop-blur-md">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-400" />
+              <span>Fetching {file.name}...</span>
+            </div>
+            <SkeletonCodeLines count={24} />
           </div>
         ) : isFileError ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-lg mx-auto">
@@ -319,7 +339,7 @@ export const CodeViewer = ({
                   {idx + 1}
                 </div>
                 {/* Line Text */}
-                <div className="table-cell whitespace-pre pr-4 pl-2 border-l border-charcoal-800/40">
+                <div className={`table-cell ${wordWrap ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'} pr-4 pl-2 border-l border-charcoal-800/40`}>
                   {renderHighlightedLine(line)}
                 </div>
               </div>

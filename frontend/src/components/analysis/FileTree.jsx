@@ -13,7 +13,9 @@ import {
   FileCog,
   FileQuestion,
   ChevronsUpDown,
+  X,
 } from 'lucide-react';
+import { SkeletonTree } from '../common/Skeleton';
 
 // Get appropriate icon based on file extension
 const getFileIcon = (fileName) => {
@@ -224,9 +226,17 @@ export const FileTree = ({ files = [], activeFile, onSelectFile }) => {
 
       {/* Tree Content */}
       <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-        {filteredFiles.length === 0 ? (
-          <div className="p-4 text-center text-xs text-charcoal-500">
-            No matching files found.
+        {files.length === 0 ? (
+          <SkeletonTree count={10} />
+        ) : filteredFiles.length === 0 ? (
+          <div className="p-6 text-center text-xs text-charcoal-500 space-y-2">
+            <p>No matching files found for "{searchTerm}".</p>
+            <button
+              onClick={() => setSearchTerm('')}
+              className="text-brand-400 hover:text-brand-300 underline font-medium cursor-pointer"
+            >
+              Clear search filter
+            </button>
           </div>
         ) : (
           filteredFiles.map((node) => (

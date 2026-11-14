@@ -12,6 +12,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.vite
 
 # Environment variables & secrets (CRITICAL: Never commit .env files)
 .env
@@ -20,6 +21,10 @@ dist-ssr
 backend/.env
 backend/.env.*
 !backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+cookies*.txt
 
 # Editor / OS files
 .vscode/*
