@@ -2,7 +2,12 @@
  * Client service to communicate with the RepoMind Express backend.
  */
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+const rawApiUrl =
+  import.meta.env.VITE_BACKEND_URL ||
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:3000';
+
+const API_BASE_URL = rawApiUrl.replace(/\/+$/, '');
 
 /**
  * Check if the backend server is reachable and online
