@@ -67,10 +67,11 @@ export async function register(req, res, next) {
     const token = generateToken(user._id);
     setAuthCookie(res, token);
 
-    // 6. Return response (excluding password)
+    // 6. Return response with token & sanitized user
     return res.status(201).json({
       success: true,
       message: 'Account created successfully.',
+      token,
       user: {
         id: user._id,
         name: user.name,
@@ -123,10 +124,11 @@ export async function login(req, res, next) {
     const token = generateToken(user._id);
     setAuthCookie(res, token);
 
-    // 5. Return sanitized user data
+    // 5. Return sanitized user data & token
     return res.status(200).json({
       success: true,
       message: 'Logged in successfully.',
+      token,
       user: {
         id: user._id,
         name: user.name,

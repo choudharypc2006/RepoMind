@@ -10,6 +10,20 @@ const rawApiUrl =
 const API_BASE_URL = rawApiUrl.replace(/\/+$/, '');
 
 /**
+ * Helper to build headers with Authorization Bearer token fallback for cross-domain hosting
+ */
+function getAuthHeaders(customHeaders = {}) {
+  const headers = { 'Content-Type': 'application/json', ...customHeaders };
+  try {
+    const token = localStorage.getItem('repomind_token');
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (_) {}
+  return headers;
+}
+
+/**
  * Check if the backend server is reachable and online
  */
 export async function checkBackendHealth() {
@@ -143,7 +157,7 @@ export async function explainCodeFile({ repoName, filePath, language, code, mode
   try {
     response = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       credentials: 'include',
       body: JSON.stringify({
         repoName,
@@ -176,7 +190,7 @@ export async function chatAboutFile({ filePath, code, messages, question, model 
   try {
     response = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       credentials: 'include',
       body: JSON.stringify({
         filePath,
@@ -219,7 +233,7 @@ export async function saveAnalysisToHistory({
   try {
     response = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       credentials: 'include',
       body: JSON.stringify({
         repositoryName,
@@ -253,7 +267,7 @@ export async function fetchFileAnalysisFromDb(repoName, filePath) {
   try {
     const response = await fetch(endpoint, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       credentials: 'include',
     });
     if (!response.ok) return null;
@@ -274,7 +288,7 @@ export async function fetchAnalysisHistory() {
   try {
     response = await fetch(endpoint, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       credentials: 'include',
     });
   } catch (networkError) {
@@ -300,7 +314,7 @@ export async function fetchAnalysisById(analysisId) {
   try {
     response = await fetch(endpoint, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       credentials: 'include',
     });
   } catch (networkError) {
@@ -326,7 +340,7 @@ export async function deleteAnalysisById(analysisId) {
   try {
     response = await fetch(endpoint, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       credentials: 'include',
     });
   } catch (networkError) {
@@ -353,7 +367,7 @@ export async function fetchUserReposFromDb() {
   try {
     const response = await fetch(endpoint, {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       credentials: 'include',
     });
     if (!response.ok) {
@@ -377,7 +391,7 @@ export async function saveUserRepoToDb(repoData) {
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       credentials: 'include',
       body: JSON.stringify(repoData),
     });
@@ -402,7 +416,7 @@ export async function deleteUserRepoFromDb(repoId) {
   try {
     const response = await fetch(endpoint, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       credentials: 'include',
     });
     if (!response.ok) return false;

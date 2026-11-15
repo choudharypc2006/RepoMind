@@ -14,12 +14,18 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true); // true on first load
 
-  // On mount, check if user already has a valid session cookie
+  // On mount, check if user already has a valid session cookie or stored token
   const checkAuth = useCallback(async () => {
     try {
+      const storedToken = localStorage.getItem('repomind_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (storedToken) {
+        headers.Authorization = `Bearer ${storedToken}`;
+      }
+
       const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include', // send HTTP-only cookie
       });
 
@@ -30,6 +36,7 @@ export const AuthProvider = ({ children }) => {
       } else {
         setUser(null);
         setIsAuthenticated(false);
+        localStorage.removeItem('repomind_token');
       }
     } catch (err) {
       setUser(null);
@@ -58,6 +65,9 @@ export const AuthProvider = ({ children }) => {
       throw new Error(data.error || 'Registration failed');
     }
 
+    if (data.token) {
+      localStorage.setItem('repomind_token', data.token);
+    }
     setUser(data.user);
     setIsAuthenticated(true);
     return data.user;
@@ -78,6 +88,9 @@ export const AuthProvider = ({ children }) => {
       throw new Error(data.error || 'Login failed');
     }
 
+    if (data.token) {
+      localStorage.setItem('repomind_token', data.token);
+    }
     setUser(data.user);
     setIsAuthenticated(true);
     return data.user;
@@ -86,14 +99,21 @@ export const AuthProvider = ({ children }) => {
   // Log out current user
   const logoutUser = async () => {
     try {
+      const storedToken = localStorage.getItem('repomind_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (storedToken) {
+        headers.Authorization = `Bearer ${storedToken}`;
+      }
+
       await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
       });
     } catch (err) {
       // Even if the request fails, clear local state
     } finally {
+      localStorage.removeItem('repomind_token');
       setUser(null);
       setIsAuthenticated(false);
     }
