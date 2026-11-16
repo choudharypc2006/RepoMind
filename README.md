@@ -17,17 +17,6 @@ RepoMind is a developer tool and repository intelligence dashboard designed for 
 
 > **🔗 Live Demo:** [frontend-repomind.vercel.app](https://frontend-repomind.vercel.app)
 
----
-
-## 📸 Screenshots
-
-| Dashboard & Repository Ingestion | 3-Panel Code Workspace |
-|:---:|:---:|
-| ![Dashboard Screenshot](https://placehold.co/800x450/0f172a/38bdf8?text=RepoMind+Dashboard+Overview) | ![Workspace Screenshot](https://placehold.co/800x450/0f172a/38bdf8?text=Three-Panel+Code+Analysis+Workspace) |
-
-| Gemini AI Code Intelligence & Audit | MongoDB Persistent History |
-|:---:|:---:|
-| ![Gemini AI Panel](https://placehold.co/800x450/0f172a/38bdf8?text=Gemini+Code+Intelligence+%26+Audit) | ![History Tab](https://placehold.co/800x450/0f172a/38bdf8?text=Persistent+MongoDB+Analysis+History) |
 
 ---
 
