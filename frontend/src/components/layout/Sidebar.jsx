@@ -68,34 +68,27 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
         }`}
       >
         {/* Brand Header */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-charcoal-700/60">
+        <div className="h-14 px-4 flex items-center justify-between border-b border-charcoal-700/60">
           <NavLink
             to="/"
             className="flex items-center gap-2.5 group focus:outline-none"
             onClick={() => window.innerWidth < 1024 && setIsOpen(false)}
           >
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-600 via-brand-500 to-brand-accent p-0.5 shadow-glow-brand flex items-center justify-center transition-transform group-hover:scale-105">
-              <div className="w-full h-full bg-charcoal-950 rounded-[7px] flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-brand-400 group-hover:text-brand-300" />
-              </div>
+            <div className="w-7 h-7 rounded-lg bg-charcoal-800 border border-charcoal-700 flex items-center justify-center text-charcoal-200 group-hover:text-white group-hover:border-charcoal-600 transition-colors">
+              <FolderGit2 className="w-4 h-4 text-brand-400" />
             </div>
             <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-charcoal-100 text-base tracking-tight group-hover:text-white transition-colors">
-                  RepoMind
-                </span>
-                <span className="text-[10px] uppercase font-mono px-1.5 py-0.2 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20 font-medium">
-                  AI
-                </span>
-              </div>
-              <span className="text-[11px] text-charcoal-400 font-mono">code intelligence</span>
+              <span className="font-semibold text-charcoal-100 text-sm tracking-tight group-hover:text-white transition-colors">
+                RepoMind
+              </span>
+              <span className="text-[10px] text-charcoal-500 font-mono">code workspace</span>
             </div>
           </NavLink>
         </div>
 
         {/* Primary Navigation */}
-        <div className="px-3 py-4 space-y-1">
-          <div className="px-2 pb-2 text-[11px] font-semibold tracking-wider uppercase text-charcoal-500">
+        <div className="px-3 py-3 space-y-1">
+          <div className="px-2 pb-1.5 text-[11px] font-medium text-charcoal-500">
             Navigation
           </div>
 
@@ -110,22 +103,22 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
                 key={item.label}
                 to={item.to}
                 onClick={() => window.innerWidth < 1024 && setIsOpen(false)}
-                className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   isActive
-                    ? 'bg-charcoal-800 text-charcoal-100 border border-charcoal-700/90 shadow-sm'
+                    ? 'bg-charcoal-800 text-charcoal-100 border border-charcoal-700/80'
                     : 'text-charcoal-400 hover:text-charcoal-200 hover:bg-charcoal-850'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <Icon
                     className={`w-4 h-4 transition-colors ${
-                      isActive ? 'text-brand-400' : 'text-charcoal-400 group-hover:text-charcoal-300'
+                      isActive ? 'text-brand-400' : 'text-charcoal-500'
                     }`}
                   />
                   <span>{item.label}</span>
                 </div>
                 {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-400 shadow-glow-brand" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
                 )}
               </NavLink>
             );
@@ -195,23 +188,21 @@ export const Sidebar = ({ isOpen, setIsOpen }) => {
           )}
         </div>
 
-        {/* Footer info: Gemini AI Model Status */}
+        {/* Footer info: Engine Model */}
         <div className="p-3 border-t border-charcoal-700/60 bg-charcoal-950/40">
-          <div className="p-2.5 rounded-lg bg-charcoal-850/80 border border-charcoal-700/50 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-brand-500/10 border border-brand-500/20 flex items-center justify-center shrink-0">
-              <Cpu className="w-3.5 h-3.5 text-brand-400 animate-pulse-subtle" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium text-charcoal-200 truncate">
+          <div className="px-2.5 py-2 rounded-lg bg-charcoal-850 border border-charcoal-700/60 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              <div className="truncate">
+                <span className="text-[11px] font-medium text-charcoal-200 block truncate">
                   Gemini Code Engine
                 </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span className="text-[10px] text-charcoal-500 font-mono block truncate">
+                  {userSettings.aiModel}
+                </span>
               </div>
-              <span className="text-[10px] text-charcoal-400 font-mono truncate block">
-                {userSettings.aiModel}
-              </span>
             </div>
+            <Cpu className="w-3.5 h-3.5 text-charcoal-500 shrink-0" />
           </div>
         </div>
       </aside>

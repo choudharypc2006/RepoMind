@@ -3,15 +3,15 @@ import { Loader2 } from 'lucide-react';
 
 const VARIANTS = {
   primary:
-    'bg-brand-600 hover:bg-brand-500 text-white font-medium shadow-sm hover:shadow-glow-brand border border-brand-500/30 active:scale-[0.98]',
+    'bg-brand-600 hover:bg-brand-500 text-white font-medium border border-brand-500/40 active:translate-y-px',
   secondary:
-    'bg-charcoal-800 hover:bg-charcoal-750 text-charcoal-100 border border-charcoal-700/80 hover:border-charcoal-600 active:scale-[0.98]',
+    'bg-charcoal-800 hover:bg-charcoal-750 text-charcoal-100 border border-charcoal-700/80 hover:border-charcoal-600 active:translate-y-px',
   outline:
-    'bg-transparent hover:bg-charcoal-800 text-charcoal-300 hover:text-charcoal-100 border border-charcoal-700 hover:border-charcoal-600 active:scale-[0.98]',
+    'bg-transparent hover:bg-charcoal-800 text-charcoal-300 hover:text-charcoal-100 border border-charcoal-700 hover:border-charcoal-600 active:translate-y-px',
   ghost:
     'bg-transparent hover:bg-charcoal-800/80 text-charcoal-400 hover:text-charcoal-200 border border-transparent',
   danger:
-    'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:border-rose-500/50 active:scale-[0.98]',
+    'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:border-rose-500/50 active:translate-y-px',
 };
 
 const SIZES = {

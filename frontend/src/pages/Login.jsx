@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GitBranch, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import { FolderGit2, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
@@ -40,22 +40,22 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-charcoal-950 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-violet-600 flex items-center justify-center shadow-lg shadow-brand-500/20">
-            <GitBranch className="w-5 h-5 text-white" />
+        <div className="flex items-center justify-center gap-2.5 mb-6">
+          <div className="w-8 h-8 rounded-lg bg-charcoal-850 border border-charcoal-700 flex items-center justify-center text-charcoal-200">
+            <FolderGit2 className="w-4 h-4 text-brand-400" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-charcoal-100">
-            Repo<span className="text-brand-400">Mind</span>
+          <span className="text-lg font-semibold tracking-tight text-white">
+            RepoMind
           </span>
         </div>
 
         {/* Card */}
-        <div className="bg-charcoal-900 border border-charcoal-700/60 rounded-2xl p-8 shadow-2xl">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-charcoal-100">Welcome back</h1>
-            <p className="text-sm text-charcoal-400 mt-1">Sign in to your RepoMind account</p>
+        <div className="bg-charcoal-900 border border-charcoal-700 rounded-xl p-6 sm:p-7">
+          <div className="mb-5">
+            <h1 className="text-xl font-semibold text-charcoal-100">Welcome back</h1>
+            <p className="text-xs text-charcoal-400 mt-1">Sign in to your account</p>
           </div>
 
           {/* Error banner */}

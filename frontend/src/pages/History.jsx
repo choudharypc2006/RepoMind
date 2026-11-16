@@ -182,11 +182,11 @@ export const History = () => {
           <div className="flex items-center gap-2">
             <HistoryIcon className="w-5 h-5 text-brand-400" />
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              MongoDB Analysis History
+              Analysis history
             </h1>
           </div>
           <p className="text-xs text-charcoal-400 mt-1">
-            Persistent repository records and Gemini AI code explanations stored in your MongoDB account.
+            Inspected repositories and saved code explanations associated with your account.
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export const History = () => {
             onClick={loadHistory}
             icon={RotateCcw}
             isLoading={isLoading}
-            title="Refresh history from MongoDB"
+            title="Refresh history"
           >
             Refresh
           </Button>
@@ -209,7 +209,7 @@ export const History = () => {
             onClick={() => navigate('/')}
             icon={PlusCircle}
           >
-            New Analysis
+            New analysis
           </Button>
         </div>
       </div>
@@ -221,15 +221,15 @@ export const History = () => {
             setActiveTab('repositories');
             setSelectedLanguage('ALL');
           }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
             activeTab === 'repositories'
-              ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-sm'
-              : 'bg-charcoal-900 text-charcoal-400 hover:text-charcoal-200 border border-charcoal-700/60'
+              ? 'bg-charcoal-800 text-charcoal-100 border border-charcoal-700'
+              : 'text-charcoal-400 hover:text-charcoal-200 hover:bg-charcoal-900 border border-transparent'
           }`}
         >
-          <FolderGit2 className="w-4 h-4" />
-          <span>Analyzed Repositories</span>
-          <span className="ml-1 px-1.5 py-0.2 rounded-full bg-charcoal-800 text-[10px] font-mono">
+          <FolderGit2 className="w-3.5 h-3.5" />
+          <span>Analyzed repositories</span>
+          <span className="ml-1 px-1.5 py-0.2 rounded bg-charcoal-850 text-[10px] font-mono text-charcoal-400">
             {userRepos.length}
           </span>
         </button>
@@ -239,15 +239,15 @@ export const History = () => {
             setActiveTab('explanations');
             setSelectedLanguage('ALL');
           }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
             activeTab === 'explanations'
-              ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-sm'
-              : 'bg-charcoal-900 text-charcoal-400 hover:text-charcoal-200 border border-charcoal-700/60'
+              ? 'bg-charcoal-800 text-charcoal-100 border border-charcoal-700'
+              : 'text-charcoal-400 hover:text-charcoal-200 hover:bg-charcoal-900 border border-transparent'
           }`}
         >
-          <FileCode className="w-4 h-4" />
-          <span>Code File Explanations</span>
-          <span className="ml-1 px-1.5 py-0.2 rounded-full bg-charcoal-800 text-[10px] font-mono">
+          <FileCode className="w-3.5 h-3.5" />
+          <span>Saved explanations</span>
+          <span className="ml-1 px-1.5 py-0.2 rounded bg-charcoal-850 text-[10px] font-mono text-charcoal-400">
             {analyses.length}
           </span>
         </button>
@@ -397,9 +397,8 @@ export const History = () => {
                     variant="primary"
                     size="sm"
                     onClick={() => handleOpenRepo(repo.id)}
-                    iconRight={ArrowRight}
                   >
-                    Open Workspace
+                    Open workspace
                   </Button>
 
                   <button
